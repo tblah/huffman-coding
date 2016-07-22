@@ -1,22 +1,45 @@
 package huffman
 import scala.annotation.tailrec
 
-
 // tree representation
 abstract class CodeTree {
   def weight: Int
   def chars: List[Char]
+  def codingTreeLookup(c: Char): List[Boolean]
+
+  def encodeString(s: String): List[Boolean] = {
+    @tailrec def iter(list: List[Char], acc: List[Boolean]): List[Boolean] = {
+      if (list.isEmpty) acc
+      else iter(list.tail, acc ++ codingTreeLookup(list.head))
+    }
+
+    iter(s.toList, Nil)
+  }
 }
 
 case class Fork(left: CodeTree, right: CodeTree) extends CodeTree {
   def weight: Int = left.weight + right.weight
   def chars: List[Char] = left.chars ++ right.chars
+
+  // taking a left branch is 0, taking a right branch is 1
+  def codingTreeLookup(c: Char): List[Boolean] = {
+    if (!(chars.contains(c))) throw new IllegalArgumentException // c is not in this tree
+
+    // first try going left
+    try {
+      left.codingTreeLookup(c) :+ false
+    } catch {
+      case ex: IllegalArgumentException => right.codingTreeLookup(c) :+ true // c was not found in the left subtree so look in the right
+    }
+  }
 }
 
 case class Leaf(char: Char, weight: Int) extends CodeTree {
   def chars: List[Char] = List(char)
+  def codingTreeLookup(c: Char): List[Boolean] =
+    if (char == c) Nil // the Fork will have added the correct bit
+    else throw new IllegalArgumentException // we did not find c
 }
-
 
 //
 
