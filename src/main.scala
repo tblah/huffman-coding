@@ -2,11 +2,18 @@ import huffman._
 
 object main {
   def main(args: Array[String]): Unit = {
-    val tree = CodeTree("test".toList)
+    val msg = "test message"
+    
+    val tree = CodeTree(msg.toList) // this does not have to be msg but it needs to include all the characters used in msg
 
-    println(tree.toString)
-    println("code for t is " + tree.codingTreeLookup('t').toString())
-    println("code for e is " + tree.codingTreeLookup('e').toString())
-    println("code for \"te\" is " + tree.encodeString("te").toString())
+    val code = tree.encodeString(msg)
+    
+    println(tree.decode( code ))
+    
+    //msg.foreach((c: Char) => println("The code for " + c + " is " + tree.codingTreeLookup(c).toString))
+    
+    //println("The tree was " + tree.toString())
+    //println("The code was " + code.toString())
+    
   }
 }

@@ -9,12 +9,19 @@ abstract class CodeTree {
 
   def encodeString(s: String): List[Boolean] = {
     @tailrec def iter(list: List[Char], acc: List[Boolean]): List[Boolean] = {
-      if (list.isEmpty) acc
+      if (list isEmpty) acc
       else iter(list.tail, acc ++ codingTreeLookup(list.head))
     }
 
     iter(s.toList, Nil)
   }
+  
+  def decode( code: List[Boolean] ): String = {
+    decodeIter( this, "", code)
+  }
+  
+  // not to be used by external programs but this has to be public so that leaves can call this on the root
+  def decodeIter( root: CodeTree, out: String, code: List[Boolean] ): String
 }
 
 case class Fork(left: CodeTree, right: CodeTree) extends CodeTree {
@@ -27,10 +34,19 @@ case class Fork(left: CodeTree, right: CodeTree) extends CodeTree {
 
     // first try going left
     try {
-      left.codingTreeLookup(c) :+ false
+      List(false) ++ left.codingTreeLookup(c)
     } catch {
-      case ex: IllegalArgumentException => right.codingTreeLookup(c) :+ true // c was not found in the left subtree so look in the right
+      case ex: IllegalArgumentException => List(true) ++ right.codingTreeLookup(c) // c was not found in the left subtree so look in the right
     }
+  }
+  
+  def decodeIter( root: CodeTree, out: String, code: List[Boolean] ): String = {
+    if (code isEmpty) throw new Error("Incomplete hamming code: ran out of code on a Fork in the hamming tree")
+    
+    if (code.head) 
+      right.decodeIter( root, out, code.tail )
+    else
+      left.decodeIter( root, out, code.tail )
   }
 }
 
@@ -39,6 +55,11 @@ case class Leaf(char: Char, weight: Int) extends CodeTree {
   def codingTreeLookup(c: Char): List[Boolean] =
     if (char == c) Nil // the Fork will have added the correct bit
     else throw new IllegalArgumentException // we did not find c
+    
+  def decodeIter( root: CodeTree, out: String, code: List[Boolean] ): String = {
+      if (code isEmpty) out + char
+      else root.decodeIter( root, out + char, code )
+    }
 }
 
 //
@@ -62,7 +83,7 @@ object CodeTree {
       // update char in the acc list
       def updateAcc(c: Char, acc: List[(Char, Int)]): List[(Char, Int)] = {
         @tailrec def updateAccIter(source: List[(Char, Int)], processed: List[(Char, Int)]): List[(Char, Int)] = {
-          if (source.isEmpty) (c, 1) +: acc // character was not found so prepend to list (prepend is faster than append)
+          if (source isEmpty) (c, 1) +: acc // character was not found so prepend to list (prepend is faster than append)
           else if (source.head._1 == c) processed ::: List((c, source.head._2 + 1)) ::: source.tail // cound character in list. Add 1 to it's count
           else updateAccIter(source.tail, processed ::: List(source.head)) // char not found. Continue itterating
         }
@@ -82,7 +103,7 @@ object CodeTree {
     // make leaf list from a sorted list of freqs
     def makeLeafList(freqs: List[(Char, Int)]): List[Leaf] = {
       @tailrec def iter(freqs: List[(Char, Int)], ret: List[Leaf]): List[Leaf] = {
-        if (freqs.isEmpty) ret
+        if (freqs isEmpty) ret
         else iter(freqs.tail, ret :+ Leaf(freqs.head._1, freqs.head._2))
       }
 
