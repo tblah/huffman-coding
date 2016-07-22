@@ -2,9 +2,9 @@ import huffman._
 
 object main {
   def main(args: Array[String]): Unit = {
-    val msg = "test message"
+    val msg = "test message. Plus a load of other stuff. Hopefully I can find bugs by brute force. One two three four five six seven eight nine ten. abcdefghijklmnopqrstuvwxyz"
     
-    val tree = CodeTree(msg.toList) // this does not have to be msg but it needs to include all the characters used in msg
+    val tree = CodeTree(msg) // this does not have to be msg but it needs to include all the characters used in msg
 
     val code = tree.encodeString(msg)
     

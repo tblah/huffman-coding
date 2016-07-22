@@ -8,20 +8,20 @@ abstract class CodeTree {
   def codingTreeLookup(c: Char): List[Boolean]
 
   def encodeString(s: String): List[Boolean] = {
-    @tailrec def iter(list: List[Char], acc: List[Boolean]): List[Boolean] = {
-      if (list isEmpty) acc
-      else iter(list.tail, acc ++ codingTreeLookup(list.head))
+    @tailrec def iter(list: List[Char], acc: List[Boolean]): List[Boolean] = list match {
+      case List()       => acc
+      case head :: tail => iter(tail, acc ++ codingTreeLookup(head))
     }
 
     iter(s.toList, Nil)
   }
-  
-  def decode( code: List[Boolean] ): String = {
-    decodeIter( this, "", code)
+
+  def decode(code: List[Boolean]): String = {
+    decodeIter(this, "", code)
   }
-  
+
   // not to be used by external programs but this has to be public so that leaves can call this on the root
-  def decodeIter( root: CodeTree, out: String, code: List[Boolean] ): String
+  def decodeIter(root: CodeTree, out: String, code: List[Boolean]): String
 }
 
 case class Fork(left: CodeTree, right: CodeTree) extends CodeTree {
@@ -35,18 +35,18 @@ case class Fork(left: CodeTree, right: CodeTree) extends CodeTree {
     // first try going left
     try {
       List(false) ++ left.codingTreeLookup(c)
-    } catch {
-      case ex: IllegalArgumentException => List(true) ++ right.codingTreeLookup(c) // c was not found in the left subtree so look in the right
+    } catch { // c was not found in the left subtree so look in the right
+      case ex: IllegalArgumentException => List(true) ++ right.codingTreeLookup(c)
     }
   }
-  
-  def decodeIter( root: CodeTree, out: String, code: List[Boolean] ): String = {
+
+  def decodeIter(root: CodeTree, out: String, code: List[Boolean]): String = {
     if (code isEmpty) throw new Error("Incomplete hamming code: ran out of code on a Fork in the hamming tree")
-    
-    if (code.head) 
-      right.decodeIter( root, out, code.tail )
+
+    if (code.head)
+      right.decodeIter(root, out, code.tail)
     else
-      left.decodeIter( root, out, code.tail )
+      left.decodeIter(root, out, code.tail)
   }
 }
 
@@ -55,56 +55,65 @@ case class Leaf(char: Char, weight: Int) extends CodeTree {
   def codingTreeLookup(c: Char): List[Boolean] =
     if (char == c) Nil // the Fork will have added the correct bit
     else throw new IllegalArgumentException // we did not find c
-    
-  def decodeIter( root: CodeTree, out: String, code: List[Boolean] ): String = {
-      if (code isEmpty) out + char
-      else root.decodeIter( root, out + char, code )
-    }
+
+  def decodeIter(root: CodeTree, out: String, code: List[Boolean]): String = {
+    if (code isEmpty) out + char
+    else root.decodeIter(root, out + char, code)
+  }
 }
 
 //
 
 // tree creation
 object CodeTree {
-  def apply(chars: List[Char]): CodeTree = {
+  def apply(chars: String): CodeTree = {
 
     def constructTree = until(singleton, combine)
 
-    val leaves = makeOrderedLeafList(times(chars))
+    val leaves = makeOrderedLeafList(times(chars.toList))
 
     constructTree(leaves).head
   }
 
   // count the number of times each char appears in chars. Unsorted
   private def times(chars: List[Char]): List[(Char, Int)] = {
-
     @tailrec def times_iter(chars: List[Char], acc: List[(Char, Int)]): List[(Char, Int)] = {
-
-      // update char in the acc list
+      // update the acc list with this occurrence of this character in chars
       def updateAcc(c: Char, acc: List[(Char, Int)]): List[(Char, Int)] = {
-        @tailrec def updateAccIter(source: List[(Char, Int)], processed: List[(Char, Int)]): List[(Char, Int)] = {
-          if (source isEmpty) (c, 1) +: acc // character was not found so prepend to list (prepend is faster than append)
-          else if (source.head._1 == c) processed ::: List((c, source.head._2 + 1)) ::: source.tail // cound character in list. Add 1 to it's count
-          else updateAccIter(source.tail, processed ::: List(source.head)) // char not found. Continue itterating
+        // search the acc list for this char and amend as needed
+        @tailrec def updateAccIter(source: List[(Char, Int)], processed: List[(Char, Int)]): List[(Char, Int)] = source match {
+          // character was not found so prepend to list (prepend is faster than append)
+          case List() => (c, 1) +: processed
+          // non-empty list
+          case (char, count) :: tail => {
+            if (char == c)
+              // found character in list. Construct a new list with this character's count incremented
+              processed ::: List((c, count + 1)) ::: tail
+            else // char not found but there is list left to check through
+              updateAccIter(tail, processed ::: List((char, count)))
+          }
         }
 
         updateAccIter(acc, Nil)
-      } // updateAcc
+      }
 
       // times_iter
-      if (chars.isEmpty) acc
-      else times_iter(chars.tail, updateAcc(chars.head, acc)) // for each char in chars updateAcc
+      chars match {
+        case List() => acc
+        case head :: tail => times_iter( tail, updateAcc(head, acc))
+      }
     }
+    
     times_iter(chars, Nil)
   }
 
-  // given the result of times, consturct an ascending sorted (by frequency) list of leaves to be added to the huffington tree
+  // given the result of times, construct an ascending sorted (by frequency) list of leaves to be added to the huffington tree
   private def makeOrderedLeafList(freqs: List[(Char, Int)]): List[CodeTree] = {
-    // make leaf list from a sorted list of freqs
+    // make leaf list from a sorted list of frequencies
     def makeLeafList(freqs: List[(Char, Int)]): List[Leaf] = {
-      @tailrec def iter(freqs: List[(Char, Int)], ret: List[Leaf]): List[Leaf] = {
-        if (freqs isEmpty) ret
-        else iter(freqs.tail, ret :+ Leaf(freqs.head._1, freqs.head._2))
+      @tailrec def iter(freqs: List[(Char, Int)], ret: List[Leaf]): List[Leaf] = freqs match {
+        case List() => ret
+        case (char, num) :: tail => iter(tail, ret :+ Leaf(char, num))
       }
 
       iter(freqs, Nil)
