@@ -77,34 +77,22 @@ object CodeTree {
 
   // count the number of times each char appears in chars. Unsorted
   private def times(chars: List[Char]): List[(Char, Int)] = {
-    @tailrec def times_iter(chars: List[Char], acc: List[(Char, Int)]): List[(Char, Int)] = {
-      // update the acc list with this occurrence of this character in chars
-      def updateAcc(c: Char, acc: List[(Char, Int)]): List[(Char, Int)] = {
-        // search the acc list for this char and amend as needed
-        @tailrec def updateAccIter(source: List[(Char, Int)], processed: List[(Char, Int)]): List[(Char, Int)] = source match {
-          // character was not found so prepend to list (prepend is faster than append)
-          case List() => (c, 1) +: processed
-          // non-empty list
-          case (char, count) :: tail => {
-            if (char == c)
-              // found character in list. Construct a new list with this character's count incremented
-              processed ::: List((c, count + 1)) ::: tail
-            else // char not found but there is list left to check through
-              updateAccIter(tail, processed ::: List((char, count)))
-          }
-        }
-
-        updateAccIter(acc, Nil)
-      }
-
-      // times_iter
-      chars match {
-        case List() => acc
-        case head :: tail => times_iter( tail, updateAcc(head, acc))
-      }
-    }
+    // for each unique character
+    //   separate each occurance of this character into a separate sublist
+    //   return (character, sublist.length)
+    //
+    // e.g. one iter on "abacb"
+    //  ("aa", "bcb")
+    //  return ('a', "aa".length)
     
-    times_iter(chars, Nil)
+    @tailrec def iter(input: List[Char], output: List[(Char, Int)]): List[(Char, Int)] = input match {
+      case List() => output
+      case head :: tail =>
+        val (this_char, others) = input.partition((c: Char) => c == head)
+        iter(others, (this_char.head, this_char.length) :: output)
+    }
+
+    iter(chars, List())
   }
 
   // given the result of times, construct an ascending sorted (by frequency) list of leaves to be added to the huffington tree
